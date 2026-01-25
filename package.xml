@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sfc_planner</name>
+  <version>0.0.1</version>
+  <description>Safe Flight Corridor Planner using ADMM optimization</description>
+  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>cmake</buildtool_depend>
+
+  <depend>eigen</depend>
+  <depend>python3-numpy</depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

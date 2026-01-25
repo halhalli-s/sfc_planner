@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+install/
+log/
+*.o
+*.a
+*.so
+sfc_planner
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled Python
+__pycache__/
+*.pyc
+*.pyo
+
+# MeshLab output
+meshlab_output/
+meshlap_output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
