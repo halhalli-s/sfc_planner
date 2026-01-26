@@ -12,7 +12,10 @@ A 3D path planning library for quadrotors that generates collision-free flight c
 
 ## Demo
 
-[Add screenshot of your matplotlib visualization here]
+![SFC Visualization](visualization.png)
+![SFC Visualization](visualization_01.png)
+![SFC Visualization](visualization_02.png)
+
 
 ## Algorithm Overview
 ```
