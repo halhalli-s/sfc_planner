@@ -21,6 +21,5 @@
 ./run_container.sh
 ```
 
-You'll land at `/home/prance/sfc_planner` with your code mounted.
-```
+
 
