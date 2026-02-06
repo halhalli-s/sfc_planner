@@ -52,7 +52,7 @@ exit
 ```
 
 ## Expected Performance (VOXL2)
-- Total planning time: **0.8-1.0 seconds**
+- Total planning time: **0.8-1.4 seconds**
 - Suitable for real-time flight at 3-5 m/s
 
 ## Troubleshooting
