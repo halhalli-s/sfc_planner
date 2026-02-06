@@ -5,6 +5,7 @@
 #include <casadi/casadi.hpp>
 #include <iris/iris.h>
 #include <iostream>
+#include <omp.h> // OpenMP for parallel processing
 
 using namespace casadi;
 
@@ -12,7 +13,10 @@ using namespace casadi;
 void SafeFlightCorridor::inflate_polytopes()
 {
     polytopes_.clear();
+    polytopes_.resize(ellipsoids_.size()); // Pre-allocate for thread safety
 
+// *** PARALLEL IRIS INFLATION ***
+#pragma omp parallel for num_threads(4)
     for (size_t i = 0; i < ellipsoids_.size(); i++)
     {
         Polytope poly;
@@ -33,10 +37,17 @@ void SafeFlightCorridor::inflate_polytopes()
                 problem.addObstacle(obs_verts);
             }
 
-            // IRIS options
+            // IRIS options - OPTIMIZED FOR SPEED
             iris::IRISOptions options;
             options.require_containment = true;
             options.error_on_infeasible_start = false;
+
+            // *** OPTIMIZATION 1: Limit iterations ***
+            options.iter_limit = 80; // Reduced from default 100 to 5
+
+            // *** OPTIMIZATION 2: Early termination ***
+            // Default is 0.02 (2%), we make it less aggressive at 0.05 (5%)
+            options.termination_threshold = 0.05; // Stop if volume improvement < 5%
 
             // Inflate region
             iris::IRISRegion region = iris::inflate_region(problem, options);
@@ -46,13 +57,16 @@ void SafeFlightCorridor::inflate_polytopes()
         }
         catch (const std::exception &e)
         {
-            std::cerr << "IRIS failed for ellipsoid " << i << ": " << e.what() << std::endl;
+#pragma omp critical
+            {
+                std::cerr << "IRIS failed for ellipsoid " << i << ": " << e.what() << std::endl;
+            }
             // Fallback to bounding box
             poly.A = bboxes_[i].A;
             poly.b = bboxes_[i].b;
         }
 
-        polytopes_.push_back(poly);
+        polytopes_[i] = poly;
     }
 }
 
@@ -168,7 +182,11 @@ void SafeFlightCorridor::optimize_waypoints(double rho, double wc)
     Dict opts;
     opts["ipopt.print_level"] = 0;
     opts["print_time"] = 0;
-    opts["ipopt.max_iter"] = 1000;
+
+    // *** OPTIMIZATION 4: Relax Ipopt tolerance ***
+    opts["ipopt.tol"] = 1e-3;            // Changed from default 1e-8
+    opts["ipopt.acceptable_tol"] = 1e-2; // Accept slightly worse solutions
+    opts["ipopt.max_iter"] = 500;        // Reduced from 1000
 
     Function solver = nlpsol("solver", "ipopt", nlp, opts);
 
@@ -196,12 +214,17 @@ void SafeFlightCorridor::optimize_waypoints(double rho, double wc)
 
     // Extract solution
     DM p_opt = res["x"];
+
     for (int i = 0; i < n; i++)
     {
         waypoints_[i](0) = static_cast<double>(p_opt(i * 3));
         waypoints_[i](1) = static_cast<double>(p_opt(i * 3 + 1));
         waypoints_[i](2) = static_cast<double>(p_opt(i * 3 + 2));
     }
+
+    // *** SAFETY FIX: Force correct start and goal (override any corruption) ***
+    waypoints_[0] = start_;
+    waypoints_[n - 1] = goal_;
 
     double final_cost = static_cast<double>(res["f"]);
     std::cout << "Waypoint optimization done. Cost: " << final_cost << std::endl;
@@ -291,7 +314,11 @@ void SafeFlightCorridor::optimize_ellipsoids(double rho, double wv)
         Dict opts;
         opts["ipopt.print_level"] = 0;
         opts["print_time"] = 0;
-        opts["ipopt.max_iter"] = 1000;
+
+        // *** OPTIMIZATION 5: Relax Ipopt tolerance for ellipsoids too ***
+        opts["ipopt.tol"] = 1e-3;            // Changed from default 1e-8
+        opts["ipopt.acceptable_tol"] = 1e-2; // Accept slightly worse solutions
+        opts["ipopt.max_iter"] = 500;        // Reduced from 1000
 
         Function solver = nlpsol("solver", "ipopt", nlp, opts);
 

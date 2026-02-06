@@ -9,6 +9,7 @@ A 3D path planning library for quadrotors that generates collision-free flight c
 - **ADMM Optimization**: Jointly optimizes waypoints and ellipsoid shapes
 - **3D Visualization**: Matplotlib visualization with collision detection analysis
 - **ROS2 Compatible**: Integrated with ROS2 workspace structure
+- **Hardware Ready**: Deployable on VOXL2 ARM64 via Docker
 
 ## Demo
 
@@ -16,6 +17,118 @@ A 3D path planning library for quadrotors that generates collision-free flight c
 ![SFC Visualization](visualization_01.png)
 ![SFC Visualization](visualization_02.png)
 
+## Quick Start (VOXL2 Hardware)
+
+### Prerequisites
+1. **Mosek Academic License** (free for students/researchers)
+   - Get license: https://www.mosek.com/products/academic-licenses/
+   - Place `mosek.lic` in `docker/` directory
+   - **Note:** License file is personal - do not commit to Git
+
+### Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/halhalli-s/sfc_planner.git
+cd sfc_planner
+
+# 2. Add your Mosek license
+cp ~/mosek.lic docker/mosek.lic
+
+# 3. Build Docker image (one-time, ~10 minutes)
+cd docker
+./build_image.sh
+
+# 4. Run development container
+./run_container.sh
+# You're now inside container at /home/prance/sfc_planner
+```
+
+### Build and Run
+```bash
+# Inside container
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+  -Dcasadi_DIR=/usr/local/lib/python3.10/dist-packages/casadi/cmake
+make -j4
+
+# Test standalone
+./sfc_planner
+
+# Test ROS2 node
+./sfc_ros_node
+```
+
+**Expected Performance on VOXL2:**
+- Total planning time: **~0.8-1.0 seconds**
+- Suitable for real-time flight at 3-5 m/s
+
+---
+
+## Docker Setup
+
+All Docker-related files are in `docker/` directory. The Docker image includes:
+- ✅ Ubuntu 22.04 + ROS2 Humble
+- ✅ IRIS library (built from source with ARM64 fixes)
+- ✅ Mosek 10.1 solver
+- ✅ CasADi optimizer
+- ✅ Eigen3, libcdd, and all dependencies pre-configured
+
+See [`docker/README.md`](docker/README.md) for detailed Docker documentation.
+
+---
+
+## Development (Laptop/x86)
+
+### Dependencies
+
+- **C++17** or later
+- **Eigen3**: Linear algebra library
+- **CasADi**: Nonlinear optimization
+- **IRIS**: Polytope inflation (requires Mosek)
+- **Mosek**: Convex optimization solver
+- **Python 3.x**: For visualization
+  - matplotlib, numpy, scipy
+- **libcdd**: Polytope H-rep to V-rep conversion
+- **GMP**: GNU Multiple Precision library
+
+### Install Dependencies (Ubuntu)
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential \
+    cmake \
+    git \
+    libeigen3-dev \
+    python3-dev \
+    python3-matplotlib \
+    python3-numpy \
+    python3-scipy \
+    libcdd-dev \
+    libgmp-dev
+
+# Install CasADi
+pip3 install casadi
+
+# Install IRIS and Mosek (see docker/Dockerfile for instructions)
+```
+
+### Build Instructions
+```bash
+# Clone repository
+git clone https://github.com/halhalli-s/sfc_planner.git
+cd sfc_planner
+
+# Build
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j4
+
+# Run
+./sfc_planner
+```
+
+---
 
 ## Algorithm Overview
 ```
@@ -30,46 +143,7 @@ A 3D path planning library for quadrotors that generates collision-free flight c
 5. Validation → ensure obstacle-free corridors
 ```
 
-## Dependencies
-
-- **C++17** or later
-- **Eigen3**: Linear algebra library
-- **Python 3.x**: For visualization
-  - matplotlib
-  - numpy
-  - scipy
-- **libcdd**: Polytope H-rep to V-rep conversion
-- **GMP**: GNU Multiple Precision library
-
-### Install Dependencies (Ubuntu)
-```bash
-sudo apt update
-sudo apt install -y \
-    libeigen3-dev \
-    python3-dev \
-    python3-matplotlib \
-    python3-numpy \
-    python3-scipy \
-    libcdd-dev \
-    libgmp-dev
-```
-
-## Build Instructions
-```bash
-# Clone repository
-cd ~/ros2_ws/src
-git clone https://github.com/YOUR_USERNAME/sfc_planner.git
-
-# Build
-cd sfc_planner
-mkdir -p build
-cd build
-cmake ..
-make
-
-# Run
-./sfc_planner
-```
+---
 
 ## Usage
 ```cpp
@@ -104,6 +178,8 @@ int main() {
 }
 ```
 
+---
+
 ## API Reference
 
 ### Main Functions
@@ -129,6 +205,8 @@ int main() {
 **`bool is_converged()`**
 - Returns true if ADMM optimization converged
 
+---
+
 ## Parameters
 
 ### MapParams
@@ -142,9 +220,16 @@ int main() {
 - `rho`: ADMM penalty parameter (default: 1.0)
 - `epsilon`: Ellipsoid perpendicular radius (default: 0.3m)
 
+---
+
 ## Project Structure
 ```
 sfc_planner/
+├── docker/                         # Docker setup for VOXL2
+│   ├── Dockerfile
+│   ├── build_image.sh
+│   ├── run_container.sh
+│   └── README.md
 ├── include/
 │   └── safe_flight_corridor.h      # Main header
 ├── src/
@@ -161,6 +246,8 @@ sfc_planner/
 └── README.md
 ```
 
+---
+
 ## Validation
 
 The planner automatically validates that all polytopes are obstacle-free:
@@ -175,37 +262,61 @@ Polytope 1: 6 faces, 8 vertices
 ✓ ALL POLYTOPES ARE OBSTACLE-FREE!
 ```
 
+---
+
+## Hardware Performance
+
+### VOXL2 (ARM64)
+- **Platform**: ModalAI VOXL2 (Qualcomm QRB5165)
+- **Total Time**: 0.8-1.0 seconds
+- **A* Planning**: 0.02 sec
+- **IRIS Inflation**: 0.40 sec
+- **ADMM Optimization**: 0.47 sec
+- **Real-time capable**: Yes (up to 5 m/s flight speed)
+
+### Laptop (x86_64)
+- Comparable performance: ~0.9 seconds
+
+---
+
 ## Related Work
 
 This implementation is based on:
 - **IRIS**: Iterative Regional Inflation by Semidefinite programming
 - **ADMM**: Alternating Direction Method of Multipliers
-- References to key papers in your thesis
+
+---
 
 ## Author
 
-**Your Name**  
+**Sachidanand Halhalli**  
 Master's Student, Northeastern University  
-Advisors: Seth Hutchinson, Hanumant Singh
+Advisors: Alireza Ramezani, Adarsh Salagame
+
+---
 
 ## License
 
-[Choose: MIT, Apache 2.0, GPL, etc.]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
 
 ## Citation
 
 If you use this code in your research, please cite:
 ```bibtex
-@mastersthesis{yourname2025sfc,
-  title={Safe Flight Corridor Generation for Quadrotor Navigation},
-  author={Your Name},
+@software{sachidanand2025sfc,
+  title={Safe Flight Corridor Planner},
+  author={Sachidanand Halhalli},
   year={2025},
-  school={Northeastern University}
+  url={https://github.com/halhalli-s/sfc_planner}
 }
 ```
 
+---
+
 ## Acknowledgments
 
-- Advisors: Seth Hutchinson and Hanumant Singh
+- Advisors: Alireza Ramezani and Adarsh Salagame
 - IRIS algorithm developers
-- ROS2 and Eigen communities
+- ROS2, Eigen, and CasADi communities

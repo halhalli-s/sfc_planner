@@ -19,6 +19,8 @@ __pycache__/
 *.pyc
 *.pyo
 
+docker/mosek.lic
+
 # MeshLab output
 meshlab_output/
 meshlap_output/

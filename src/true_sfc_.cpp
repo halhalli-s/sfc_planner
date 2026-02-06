@@ -1,9 +1,9 @@
 // safe_flight_corridor.cpp
 // Constructor, generate(), and main pipeline orchestration
+
 #include "safe_flight_corridor.h"
 #include <iostream>
 #include <random>
-#include <chrono>
 
 SafeFlightCorridor::SafeFlightCorridor()
     : converged_(false), map_x_(25.0), map_y_(11.0), map_z_(6.0)
@@ -16,8 +16,6 @@ void SafeFlightCorridor::generate(
     const std::vector<Eigen::Vector3d> &obstacles,
     const ADMMParams &params)
 {
-    auto t_total_start = std::chrono::high_resolution_clock::now();
-
     // Store inputs
     start_ = start;
     goal_ = goal;
@@ -33,27 +31,18 @@ void SafeFlightCorridor::generate(
 
     // Step 1: Find path
     std::cout << "\n--- Step 1: Path Planning ---" << std::endl;
-    auto t1 = std::chrono::high_resolution_clock::now();
     get_path(start, goal, obstacles, map_params);
-    auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Waypoints: " << waypoints_.size() << std::endl;
-    std::cout << "⏱️  A* took: " << std::chrono::duration<double>(t2 - t1).count() << " sec" << std::endl;
 
     // Step 2: Initialize ellipsoids
     std::cout << "\n--- Step 2: Initialize Ellipsoids ---" << std::endl;
-    auto t3 = std::chrono::high_resolution_clock::now();
     init_ellipsoids(params.epsilon);
-    auto t4 = std::chrono::high_resolution_clock::now();
     std::cout << "Ellipsoids: " << ellipsoids_.size() << std::endl;
-    std::cout << "⏱️  Ellipsoids took: " << std::chrono::duration<double>(t4 - t3).count() << " sec" << std::endl;
 
     // Step 3: Compute bounding boxes
     std::cout << "\n--- Step 3: Compute Bounding Boxes ---" << std::endl;
-    auto t5 = std::chrono::high_resolution_clock::now();
     compute_bounding_boxes(params.bbox_size);
-    auto t6 = std::chrono::high_resolution_clock::now();
     std::cout << "Bounding boxes: " << bboxes_.size() << std::endl;
-    std::cout << "⏱️  Bounding boxes took: " << std::chrono::duration<double>(t6 - t5).count() << " sec" << std::endl;
 
     // Step 4: Initialize Lagrangian multipliers
     int num_ellipsoids = ellipsoids_.size();
@@ -61,43 +50,28 @@ void SafeFlightCorridor::generate(
 
     // Step 5: ADMM optimization loop
     std::cout << "\n--- Step 4: ADMM Optimization ---" << std::endl;
-    auto t_admm_start = std::chrono::high_resolution_clock::now();
 
     for (int outer = 0; outer < params.outer_max; outer++)
     {
         std::cout << "\n========== OUTER ITERATION " << outer + 1 << "/" << params.outer_max << " ==========" << std::endl;
 
         // Inflate polytopes using IRIS
-        auto t_iris_start = std::chrono::high_resolution_clock::now();
         inflate_polytopes();
-        auto t_iris_end = std::chrono::high_resolution_clock::now();
         std::cout << "Inflated " << polytopes_.size() << " polytopes" << std::endl;
-        std::cout << "  ⏱️  IRIS inflation took: " << std::chrono::duration<double>(t_iris_end - t_iris_start).count() << " sec" << std::endl;
 
         // Inner loop
-        auto t_inner_start = std::chrono::high_resolution_clock::now();
         for (int k = 0; k < params.inner_max; k++)
         {
             std::cout << "--- Inner iteration " << k + 1 << "/" << params.inner_max << " ---" << std::endl;
+
             optimize_waypoints(params.rho, params.wc);
             optimize_ellipsoids(params.rho, params.wv);
             update_lagrangian(params.rho);
         }
-        auto t_inner_end = std::chrono::high_resolution_clock::now();
-        std::cout << "  ⏱️  ADMM inner loops took: " << std::chrono::duration<double>(t_inner_end - t_inner_start).count() << " sec" << std::endl;
     }
 
-    auto t_admm_end = std::chrono::high_resolution_clock::now();
-    std::cout << "⏱️  Total ADMM took: " << std::chrono::duration<double>(t_admm_end - t_admm_start).count() << " sec" << std::endl;
-
     converged_ = true;
-
-    auto t_total_end = std::chrono::high_resolution_clock::now();
     std::cout << "\n=== SFC Generation Complete ===" << std::endl;
-    std::cout << "\n⏱️  ========================================" << std::endl;
-    std::cout << "⏱️  ===== TOTAL TIME: " << std::chrono::duration<double>(t_total_end - t_total_start).count() << " sec =====" << std::endl;
-    std::cout << "⏱️  ========================================\n"
-              << std::endl;
 }
 
 void SafeFlightCorridor::generate(
