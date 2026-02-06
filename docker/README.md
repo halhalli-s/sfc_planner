@@ -24,10 +24,3 @@
 You'll land at `/home/prance/sfc_planner` with your code mounted.
 ```
 
----
-
-## 📦 **GitHub Structure (What People Clone):**
-```
-https://github.com/you/sfc_planner
-└── Everything in one repo!
-    └── docker/ subfolder has Docker stuff
