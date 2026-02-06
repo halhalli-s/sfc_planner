@@ -67,7 +67,7 @@ ls /usr/local/lib/python3.10/dist-packages/casadi/
 ```
 
 ### Rebuild Image
-If you need to rebuild after changes:
+If needed to rebuild after changes:
 ```bash
 docker rmi prance:sfc-planner
 ./build_image.sh
